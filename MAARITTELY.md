@@ -33,6 +33,10 @@ Kirjoita säännöt muotoon **"Kun … niin …"**. Jokaisen säännön voi test
 | 4 | Kun pelaaja ei napauta ollenkaan ennen estettä, niin poni kieltäytyy hyppäämästä ja esteestä saa 1 pisteen. | ✓ |
 | 5 | Kun poni pääsee maaliin (kaikki 10 estettä on ohitettu), niin peli loppuu. | ✓ |
 | 6 | Kun poni kieltäytyy 3. kerran, niin peli loppuu. | ✓ |
+| 7 | Kun peli alkaa, niin radan 10 esteen järjestys arvotaan. Esteitä on neljää lajia: tavallinen este, vesieste 💧, korkea este ⬆️ ja okseri ↔️. | ✓ |
+| 8 | Kun poni hyppää vesiesteen yli hyvin, niin saa 10 pistettä. Kun napauttaa väärään aikaan, niin poni astuu veteen, ruudulla lukee "Polskis!" 💦 ja saa 5 pistettä. | ✓ |
+| 9 | Kun tulee korkea este, niin pitää napauttaa tarkemmin kuin tavallisella esteellä. Hyvästä hypystä saa 20 pistettä ja jos puomi putoaa, 10 pistettä. | ✓ |
+| 10 | Kun tulee okseri, niin tulee kaksi korkeaa estettä täysin peräkkäin. Kummankin yli hypätään omalla hypyllä, ja kummastakin saa omat pisteet (hyvä 20, puomi putoaa 10). Okseri vie radalta kaksi esteen paikkaa. | ✓ |
 
 ## 5. Toivelista
 
@@ -45,7 +49,7 @@ Kirjoita säännöt muotoon **"Kun … niin …"**. Jokaisen säännön voi test
 - Peli loppuu 3. kieltäytymiseen (sääntö 6)
 
 ### Kiva (lisätään myöhemmin)
-- Eri esteitä, esimerkiksi korkeampia esteitä tai vesieste 💧
+- Eri esteitä: vesieste 💧, korkea este ⬆️ ja okseri ↔️ (säännöt 7–10, tehdään versiossa 2)
 - Äänet 🔊
 
 ### Myöhemmin (ehkä joskus)
@@ -54,7 +58,7 @@ Kirjoita säännöt muotoon **"Kun … niin …"**. Jokaisen säännön voi test
 ## 6. Ulkonäkö
 
 - **Värit:** hiekan värinen kenttä ja sininen taivas 🟫🟦
-- **Hahmot ja esineet:** poni ja ratsastaja 🏇. Esteet ovat piirrettyjä puomeja: puna-valkoisia 🔴⚪, sini-valkoisia 🔵⚪ ja kelta-valkoisia 🟡⚪, vuorotellen.
+- **Hahmot ja esineet:** poni ja ratsastaja 🏇. Esteet ovat piirrettyjä puomeja: puna-valkoisia 🔴⚪, sini-valkoisia 🔵⚪ ja kelta-valkoisia 🟡⚪, vuorotellen. Vesieste on sininen vesiallas 💧. Korkea este ja okserin esteet ovat korkeampia puomiesteitä.
 - **Äänet:** kyllä, mutta myöhemmin (Kiva-listalla) 🔊
 
 ## 7. Versiot
@@ -63,3 +67,4 @@ Kirjoita säännöt muotoon **"Kun … niin …"**. Jokaisen säännön voi test
 |--------|----------------|-------|
 | 0 | Tyhjä pohja | |
 | 1 | Ensimmäinen toimiva versio | 20.11.2026 |
+| 2 | Uusi versio | 20.11.2026 |

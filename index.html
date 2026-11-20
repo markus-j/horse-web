@@ -63,16 +63,24 @@
   <script>
     // ---- Säännöt määrittelystä (MAARITTELY.md) ----
     const ESTEITA = 10;          // sääntö 5: rata, jossa 10 estettä
-    const PISTEET_HYVA = 10;     // sääntö 2
-    const PISTEET_PUOMI = 5;     // sääntö 3
     const PISTEET_KIELTO = 1;    // sääntö 4
     const KIELLOT_LOPPU = 3;     // sääntö 6
+    // säännöt 8–10: uudet esteet
+    const PISTEET = {
+      tavallinen: { hyva: 10, huono: 5 },
+      vesi:       { hyva: 10, huono: 5 },   // huono = "Polskis!"
+      korkea:     { hyva: 20, huono: 10 },  // myös okserin esteet
+    };
+    const LAJIT = ['tavallinen', 'vesi', 'korkea', 'okseri']; // sääntö 7: arvotaan
     const VARIT = ['#e53935', '#1e63d6', '#f5c400']; // puna, sini, kelta (vuorotellen)
 
     // ---- Pelin tuntuma ----
     const HYPPY_AIKA = 1.0;          // sekuntia ilmassa
     const HYVA_ALKU = 0.2;           // hyvän hypyn ikkuna (osuus hypystä)
     const HYVA_LOPPU = 0.8;
+    const KORKEA_ALKU = 0.3;         // korkea este: tarkempi ikkuna (sääntö 9)
+    const KORKEA_LOPPU = 0.65;
+    const OKSERI_VALI = 1.25;        // sekuntia okserin kahden esteen välillä
     const KIELTO_AIKA = 1.2;         // kuinka kauan poni seisoo kieltäytyessään
 
     const kangas = document.getElementById('kangas');
@@ -103,16 +111,33 @@
     function aloita() {
       pisteet = 0; kiellot = 0;
       esteet = [];
-      for (let i = 0; i < ESTEITA; i++) {
-        esteet.push({
-          x: L * 1.1 + i * valimatka(),
-          vari: VARIT[i % VARIT.length],
-          tulos: null,       // null, 'hyva', 'puomi', 'kielto'
+      // sääntö 7: arvotaan radan 10 esteen paikat. Okseri vie kaksi paikkaa (sääntö 10).
+      let x = L * 1.1, varinro = 0;
+      const uusi = (laji, xx) => {
+        const e = {
+          x: xx, laji,
+          vari: laji === 'vesi' ? null : VARIT[varinro++ % VARIT.length],
+          tulos: null,       // null, 'hyva', 'puomi', 'polskis', 'kielto'
           odottaa: false,    // poni oli ilmassa kun este tuli kohdalle
-          puomiKulma: 0, puomiPudotus: 0, haalistus: 1,
-        });
+          puomiPudotus: 0, haalistus: 1,
+        };
+        esteet.push(e);
+      };
+      while (esteet.length < ESTEITA) {
+        let laji = LAJIT[Math.floor(Math.random() * LAJIT.length)];
+        while (laji === 'okseri' && esteet.length > ESTEITA - 2) {
+          laji = LAJIT[Math.floor(Math.random() * LAJIT.length)];
+        }
+        if (laji === 'okseri') {
+          uusi('korkea', x);
+          x += nopeus() * OKSERI_VALI;
+          uusi('korkea', x);
+        } else {
+          uusi(laji, x);
+        }
+        x += valimatka();
       }
-      maali = { x: L * 1.1 + ESTEITA * valimatka() };
+      maali = { x };
       hyppyT = 0; ilmassa = false; kieltoAika = 0;
       viesti = ''; viestiAika = 0;
       tila = 'ajo';
@@ -160,7 +185,7 @@
 
       for (const e of esteet) {
         e.x -= liike;
-        if (e.tulos === 'puomi') {
+        if (e.tulos === 'puomi' || e.tulos === 'polskis') {
           e.puomiPudotus = Math.min(1, e.puomiPudotus + dt * 2.5);
         }
         if (e.tulos === 'kielto' && kieltoAika <= 0) {
@@ -183,14 +208,22 @@
         }
         // este on ponin alla: arvioidaan hypyn ajoitus
         if (e.odottaa && e.x <= px) {
-          if (ilmassa && hyppyT >= HYVA_ALKU && hyppyT <= HYVA_LOPPU) {
+          const korkea = e.laji === 'korkea';
+          const alku = korkea ? KORKEA_ALKU : HYVA_ALKU;
+          const loppu = korkea ? KORKEA_LOPPU : HYVA_LOPPU;
+          const p = PISTEET[e.laji];
+          if (ilmassa && hyppyT >= alku && hyppyT <= loppu) {
             e.tulos = 'hyva';
-            pisteet += PISTEET_HYVA;                 // sääntö 2
-            naytaViesti('Hieno hyppy! ⭐ +' + PISTEET_HYVA);
+            pisteet += p.hyva;                       // säännöt 2, 8, 9
+            naytaViesti('Hieno hyppy! ⭐ +' + p.hyva);
+          } else if (e.laji === 'vesi') {
+            e.tulos = 'polskis';
+            pisteet += p.huono;                      // sääntö 8
+            naytaViesti('Polskis! 💦 +' + p.huono);
           } else {
             e.tulos = 'puomi';
-            pisteet += PISTEET_PUOMI;                // sääntö 3
-            naytaViesti('Puomi putosi! +' + PISTEET_PUOMI);
+            pisteet += p.huono;                      // säännöt 3, 9
+            naytaViesti('Puomi putosi! +' + p.huono);
           }
         }
       }
@@ -201,8 +234,9 @@
 
     function piirraEste(e) {
       if (e.haalistus <= 0 || e.x < -L * 0.3 || e.x > L * 1.5) return;
+      if (e.laji === 'vesi') { piirraVesi(e); return; }
       const y0 = maaY();
-      const h = esteKork();
+      const h = e.laji === 'korkea' ? esteKork() * 1.4 : esteKork();
       const lev = poniKoko() * 0.7;
       const tolppa = Math.max(6, lev * 0.12);
       ctx.save();
@@ -223,6 +257,32 @@
         piirraPuomi(e.x + p * lev * 0.15, y, lev, e.vari, p * 0.35);
       } else {
         piirraPuomi(e.x, y0 - h, lev, e.vari, 0);
+      }
+      ctx.restore();
+    }
+
+    function piirraVesi(e) {
+      const y0 = maaY();
+      const lev = poniKoko() * 1.1;
+      const kork = Math.max(10, poniKoko() * 0.14);
+      ctx.save();
+      ctx.globalAlpha = e.haalistus;
+      // vesiallas
+      ctx.fillStyle = '#1e88e5';
+      ctx.beginPath();
+      ctx.ellipse(e.x, y0 + kork * 0.3, lev / 2, kork, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.6)';
+      ctx.fillRect(e.x - lev * 0.25, y0 + kork * 0.1, lev * 0.18, 3);
+      ctx.fillRect(e.x + lev * 0.05, y0 + kork * 0.5, lev * 0.2, 3);
+      // roiske, kun poni astuu veteen
+      if (e.tulos === 'polskis' && e.puomiPudotus < 1) {
+        const s = poniKoko() * 0.5;
+        ctx.globalAlpha = e.haalistus * (1 - e.puomiPudotus);
+        ctx.font = s + 'px system-ui, sans-serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+        ctx.fillText('💦', e.x - s * 0.4, y0 - e.puomiPudotus * s);
+        ctx.fillText('💦', e.x + s * 0.4, y0 - e.puomiPudotus * s * 0.7);
       }
       ctx.restore();
     }
