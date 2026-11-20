@@ -37,6 +37,8 @@ Kirjoita säännöt muotoon **"Kun … niin …"**. Jokaisen säännön voi test
 | 8 | Kun poni hyppää vesiesteen yli hyvin, niin saa 10 pistettä. Kun napauttaa väärään aikaan, niin poni astuu veteen, ruudulla lukee "Polskis!" 💦 ja saa 5 pistettä. | ✓ |
 | 9 | Kun tulee korkea este, niin pitää napauttaa tarkemmin kuin tavallisella esteellä. Hyvästä hypystä saa 20 pistettä ja jos puomi putoaa, 10 pistettä. | ✓ |
 | 10 | Kun tulee okseri, niin tulee kaksi korkeaa estettä täysin peräkkäin. Kummankin yli hypätään omalla hypyllä, ja kummastakin saa omat pisteet (hyvä 20, puomi putoaa 10). Okseri vie radalta kaksi esteen paikkaa. | ✓ |
+| 11 | Kun puomi putoaa, niin kuuluu "kolks"-ääni 🪵. | |
+| 12 | Kun poni laukkaa, niin kuuluu kavioiden kopse 🐴. Kun poni on ilmassa tai seisoo, niin kopse on hiljaa. | |
 
 ## 5. Toivelista
 
@@ -50,7 +52,7 @@ Kirjoita säännöt muotoon **"Kun … niin …"**. Jokaisen säännön voi test
 
 ### Kiva (lisätään myöhemmin)
 - Eri esteitä: vesieste 💧, korkea este ⬆️ ja okseri ↔️ (säännöt 7–10, tehdään versiossa 2)
-- Äänet 🔊
+- Äänet 🔊: puomin "kolks" ja kavioiden kopse (säännöt 11–12, tehdään versiossa 3)
 
 ### Myöhemmin (ehkä joskus)
 -
@@ -59,7 +61,7 @@ Kirjoita säännöt muotoon **"Kun … niin …"**. Jokaisen säännön voi test
 
 - **Värit:** hiekan värinen kenttä ja sininen taivas 🟫🟦
 - **Hahmot ja esineet:** poni ja ratsastaja 🏇. Esteet ovat piirrettyjä puomeja: puna-valkoisia 🔴⚪, sini-valkoisia 🔵⚪ ja kelta-valkoisia 🟡⚪, vuorotellen. Vesieste on sininen vesiallas 💧. Korkea este ja okserin esteet ovat korkeampia puomiesteitä.
-- **Äänet:** kyllä, mutta myöhemmin (Kiva-listalla) 🔊
+- **Äänet:** kyllä 🔊: puomin "kolks" ja kavioiden kopse. Äänet tehdään koodilla.
 
 ## 7. Versiot
 
@@ -68,3 +70,4 @@ Kirjoita säännöt muotoon **"Kun … niin …"**. Jokaisen säännön voi test
 | 0 | Tyhjä pohja | |
 | 1 | Ensimmäinen toimiva versio | 20.11.2026 |
 | 2 | Uusi versio | 20.11.2026 |
+| 3 | Äänet | 20.11.2026 |

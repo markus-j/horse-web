@@ -105,6 +105,66 @@
     const esteKork = () => poniKoko() * 0.75;
     const hyppyKork = () => poniKoko() * 1.3;
 
+    // ---- Äänet (säännöt 11–12), tehdään koodilla ----
+    let aani = null, kohina = null, kopseAika = 0;
+    function avaaAanet() {
+      try {
+        if (!aani) {
+          aani = new (window.AudioContext || window.webkitAudioContext)();
+          kohina = aani.createBuffer(1, aani.sampleRate * 0.2, aani.sampleRate);
+          const d = kohina.getChannelData(0);
+          for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+        }
+        if (aani.state === 'suspended') aani.resume();
+      } catch (e) { aani = null; }
+    }
+    function napsahdus(aika, taajuus, kesto, voimakkuus) {
+      const lahde = aani.createBufferSource();
+      lahde.buffer = kohina;
+      const suodin = aani.createBiquadFilter();
+      suodin.type = 'bandpass'; suodin.frequency.value = taajuus; suodin.Q.value = 3;
+      const vahvistus = aani.createGain();
+      vahvistus.gain.setValueAtTime(voimakkuus, aika);
+      vahvistus.gain.exponentialRampToValueAtTime(0.001, aika + kesto);
+      lahde.connect(suodin); suodin.connect(vahvistus); vahvistus.connect(aani.destination);
+      lahde.start(aika); lahde.stop(aika + kesto + 0.02);
+    }
+    function puuNaksu(aika, taajuus) {
+      const o = aani.createOscillator();
+      o.type = 'triangle';
+      o.frequency.setValueAtTime(taajuus, aika);
+      o.frequency.exponentialRampToValueAtTime(taajuus * 0.6, aika + 0.12);
+      const g = aani.createGain();
+      g.gain.setValueAtTime(0.5, aika);
+      g.gain.exponentialRampToValueAtTime(0.001, aika + 0.15);
+      o.connect(g); g.connect(aani.destination);
+      o.start(aika); o.stop(aika + 0.17);
+      napsahdus(aika, taajuus * 4, 0.05, 0.6);
+    }
+    // sääntö 11: puomi putoaa -> "kolks"
+    function kolks() {
+      if (!aani) return;
+      const t = aani.currentTime;
+      puuNaksu(t, 420);
+      puuNaksu(t + 0.16, 300);
+    }
+    // sääntö 12: kavioiden kopse laukassa (ta-ta-tam, tauko)
+    const KOPSE_KIERROS = 0.42;
+    const KOPSE_ISKUT = [0, 0.08, 0.16];
+    function kopse(dt, laukkaa) {
+      if (!aani) return;
+      if (!laukkaa) { kopseAika = 0; return; }
+      const ennen = kopseAika;
+      kopseAika += dt;
+      const vaihe1 = ennen % KOPSE_KIERROS;
+      const vaihe2 = vaihe1 + dt;
+      for (const isku of KOPSE_ISKUT) {
+        if ((ennen === 0 && isku === 0) || (isku > vaihe1 && isku <= vaihe2) || (isku + KOPSE_KIERROS > vaihe1 && isku + KOPSE_KIERROS <= vaihe2)) {
+          napsahdus(aani.currentTime, isku === 0.16 ? 600 : 900, 0.06, isku === 0.16 ? 0.9 : 0.6);
+        }
+      }
+    }
+
     let tila = 'alku'; // alku, ajo, loppu
     let pisteet, kiellot, esteet, maali, hyppyT, ilmassa, kieltoAika, viesti, viestiAika, edellinen;
 
@@ -224,9 +284,12 @@
             e.tulos = 'puomi';
             pisteet += p.huono;                      // säännöt 3, 9
             naytaViesti('Puomi putosi! +' + p.huono);
+            kolks();
           }
         }
       }
+
+      kopse(dt, !ilmassa && kieltoAika <= 0);   // sääntö 12
 
       maali.x -= liike;
       if (maali.x <= px) lopeta(true);             // sääntö 5
@@ -374,8 +437,8 @@
     window.addEventListener('keydown', (ev) => {
       if (ev.code === 'Space' || ev.code === 'ArrowUp') { ev.preventDefault(); hyppaa(); }
     });
-    document.getElementById('aloitaNappi').addEventListener('click', aloita);
-    document.getElementById('uudestaanNappi').addEventListener('click', aloita);
+    document.getElementById('aloitaNappi').addEventListener('click', () => { avaaAanet(); aloita(); });
+    document.getElementById('uudestaanNappi').addEventListener('click', () => { avaaAanet(); aloita(); });
     document.addEventListener('touchmove', (ev) => ev.preventDefault(), { passive: false });
   </script>
 </body>
