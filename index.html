@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <title>Minun pelini</title>
+  <title>Ponit esteillä</title>
   <style>
     html, body {
       margin: 0;
@@ -14,29 +14,309 @@
       touch-action: none;
       -webkit-user-select: none;
       user-select: none;
+      -webkit-touch-callout: none;
       font-family: system-ui, sans-serif;
-      background: #bfe6ff;
+      background: #7ec8f5;
     }
-    #peli {
-      height: 100%;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-      padding: 24px;
-      box-sizing: border-box;
+    canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+    .ruutu {
+      position: fixed; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      text-align: center; padding: 24px; box-sizing: border-box;
+      background: rgba(255, 255, 255, 0.75);
     }
-    h1 { font-size: 2rem; margin: 0 0 12px; }
-    p  { font-size: 1.2rem; margin: 0; }
-    .iso { font-size: 5rem; }
+    .piilossa { display: none; }
+    h1 { font-size: 2.4rem; margin: 0 0 8px; color: #3a2a10; }
+    p  { font-size: 1.4rem; margin: 4px 0; color: #3a2a10; }
+    .iso { font-size: 6rem; line-height: 1.1; transform: scaleX(-1); }
+    .lippu { font-size: 6rem; line-height: 1.1; }
+    button {
+      margin-top: 24px;
+      font-size: 2rem; font-weight: bold;
+      min-width: 220px; min-height: 80px;
+      border: none; border-radius: 40px;
+      background: #2fa84f; color: white;
+      box-shadow: 0 6px 0 #1d7a36;
+      touch-action: manipulation;
+    }
+    button:active { transform: translateY(4px); box-shadow: 0 2px 0 #1d7a36; }
   </style>
 </head>
 <body>
-  <div id="peli">
-    <div class="iso">🎮</div>
-    <h1>Peli tulee tähän!</h1>
-    <p>Suunnittele peli ensin tiedostoon MAARITTELY.md.</p>
+  <canvas id="kangas"></canvas>
+
+  <div id="alku" class="ruutu">
+    <div class="iso">🏇</div>
+    <h1>Ponit esteillä</h1>
+    <p>Napauta, niin poni hyppää!</p>
+    <button id="aloitaNappi">Aloita</button>
   </div>
+
+  <div id="loppu" class="ruutu piilossa">
+    <div id="loppuKuva" class="lippu">🏁</div>
+    <h1 id="loppuOtsikko">Maali!</h1>
+    <p id="loppuTeksti"></p>
+    <button id="uudestaanNappi">Aloita</button>
+  </div>
+
+  <script>
+    // ---- Säännöt määrittelystä (MAARITTELY.md) ----
+    const ESTEITA = 10;          // sääntö 5: rata, jossa 10 estettä
+    const PISTEET_HYVA = 10;     // sääntö 2
+    const PISTEET_PUOMI = 5;     // sääntö 3
+    const PISTEET_KIELTO = 1;    // sääntö 4
+    const KIELLOT_LOPPU = 3;     // sääntö 6
+    const VARIT = ['#e53935', '#1e63d6', '#f5c400']; // puna, sini, kelta (vuorotellen)
+
+    // ---- Pelin tuntuma ----
+    const HYPPY_AIKA = 1.0;          // sekuntia ilmassa
+    const HYVA_ALKU = 0.2;           // hyvän hypyn ikkuna (osuus hypystä)
+    const HYVA_LOPPU = 0.8;
+    const KIELTO_AIKA = 1.2;         // kuinka kauan poni seisoo kieltäytyessään
+
+    const kangas = document.getElementById('kangas');
+    const ctx = kangas.getContext('2d');
+    let L = 0, K = 0; // leveys, korkeus
+
+    function koko() {
+      const dpr = window.devicePixelRatio || 1;
+      L = window.innerWidth; K = window.innerHeight;
+      kangas.width = L * dpr; kangas.height = K * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    window.addEventListener('resize', koko);
+    koko();
+
+    // mitat lasketaan ruudun koosta
+    const maaY = () => K * 0.68;
+    const poniKoko = () => Math.min(L * 0.22, K * 0.13);
+    const poniX = () => L * 0.28;
+    const nopeus = () => L * 0.45;       // pikseliä sekunnissa
+    const valimatka = () => L * 0.95;
+    const esteKork = () => poniKoko() * 0.75;
+    const hyppyKork = () => poniKoko() * 1.3;
+
+    let tila = 'alku'; // alku, ajo, loppu
+    let pisteet, kiellot, esteet, maali, hyppyT, ilmassa, kieltoAika, viesti, viestiAika, edellinen;
+
+    function aloita() {
+      pisteet = 0; kiellot = 0;
+      esteet = [];
+      for (let i = 0; i < ESTEITA; i++) {
+        esteet.push({
+          x: L * 1.1 + i * valimatka(),
+          vari: VARIT[i % VARIT.length],
+          tulos: null,       // null, 'hyva', 'puomi', 'kielto'
+          odottaa: false,    // poni oli ilmassa kun este tuli kohdalle
+          puomiKulma: 0, puomiPudotus: 0, haalistus: 1,
+        });
+      }
+      maali = { x: L * 1.1 + ESTEITA * valimatka() };
+      hyppyT = 0; ilmassa = false; kieltoAika = 0;
+      viesti = ''; viestiAika = 0;
+      tila = 'ajo';
+      if (document.activeElement) document.activeElement.blur();
+      document.getElementById('alku').classList.add('piilossa');
+      document.getElementById('loppu').classList.add('piilossa');
+      edellinen = performance.now();
+    }
+
+    function hyppaa() {
+      if (tila !== 'ajo' || ilmassa || kieltoAika > 0) return;
+      ilmassa = true; hyppyT = 0;
+    }
+
+    function naytaViesti(t) { viesti = t; viestiAika = 1.2; }
+
+    function lopeta(maaliin) {
+      tila = 'loppu';
+      document.getElementById('loppuKuva').textContent = maaliin ? '🏁' : '🛑';
+      document.getElementById('loppuOtsikko').textContent = maaliin ? 'Maali!' : 'Peli loppui';
+      document.getElementById('loppuTeksti').innerHTML =
+        (maaliin ? '' : 'Poni kieltäytyi 3 kertaa.<br>') + 'Pisteet: <b>' + pisteet + '</b> ⭐';
+      document.getElementById('loppu').classList.remove('piilossa');
+    }
+
+    function paivita(dt) {
+      if (viestiAika > 0) viestiAika -= dt;
+
+      // hyppy
+      if (ilmassa) {
+        hyppyT += dt / HYPPY_AIKA;
+        if (hyppyT >= 1) { ilmassa = false; hyppyT = 0; }
+      }
+
+      // kieltäytyminen: poni seisoo paikallaan
+      let liike = nopeus() * dt;
+      if (kieltoAika > 0) {
+        kieltoAika -= dt;
+        liike = 0;
+        if (kieltoAika <= 0 && kiellot >= KIELLOT_LOPPU) { lopeta(false); return; }
+      }
+
+      const px = poniX();
+      const nokka = px + Math.max(nopeus() * 0.25, poniKoko() * 0.95); // este ponin nenän edessä
+
+      for (const e of esteet) {
+        e.x -= liike;
+        if (e.tulos === 'puomi') {
+          e.puomiPudotus = Math.min(1, e.puomiPudotus + dt * 2.5);
+        }
+        if (e.tulos === 'kielto' && kieltoAika <= 0) {
+          e.haalistus = Math.max(0, e.haalistus - dt * 3);
+        }
+        if (e.tulos !== null) continue;
+
+        // este tulee ponin nenän kohdalle
+        if (!e.odottaa && e.x <= nokka) {
+          if (!ilmassa) {
+            // sääntö 4: ei napautusta -> kieltäytyy, 1 piste
+            e.tulos = 'kielto';
+            pisteet += PISTEET_KIELTO;
+            kiellot++;
+            kieltoAika = KIELTO_AIKA;
+            naytaViesti('Poni kieltäytyi! 🛑 +' + PISTEET_KIELTO);
+            break;
+          }
+          e.odottaa = true;
+        }
+        // este on ponin alla: arvioidaan hypyn ajoitus
+        if (e.odottaa && e.x <= px) {
+          if (ilmassa && hyppyT >= HYVA_ALKU && hyppyT <= HYVA_LOPPU) {
+            e.tulos = 'hyva';
+            pisteet += PISTEET_HYVA;                 // sääntö 2
+            naytaViesti('Hieno hyppy! ⭐ +' + PISTEET_HYVA);
+          } else {
+            e.tulos = 'puomi';
+            pisteet += PISTEET_PUOMI;                // sääntö 3
+            naytaViesti('Puomi putosi! +' + PISTEET_PUOMI);
+          }
+        }
+      }
+
+      maali.x -= liike;
+      if (maali.x <= px) lopeta(true);             // sääntö 5
+    }
+
+    function piirraEste(e) {
+      if (e.haalistus <= 0 || e.x < -L * 0.3 || e.x > L * 1.5) return;
+      const y0 = maaY();
+      const h = esteKork();
+      const lev = poniKoko() * 0.7;
+      const tolppa = Math.max(6, lev * 0.12);
+      ctx.save();
+      ctx.globalAlpha = e.haalistus;
+      // tolpat
+      ctx.fillStyle = '#ffffff';
+      ctx.strokeStyle = '#555';
+      ctx.lineWidth = 1.5;
+      for (const sx of [e.x - lev / 2, e.x + lev / 2]) {
+        ctx.fillRect(sx - tolppa / 2, y0 - h * 1.15, tolppa, h * 1.15);
+        ctx.strokeRect(sx - tolppa / 2, y0 - h * 1.15, tolppa, h * 1.15);
+      }
+      // puomit: alempi ja ylempi
+      piirraPuomi(e.x, y0 - h * 0.45, lev, e.vari, 0);
+      if (e.tulos === 'puomi') {
+        const p = e.puomiPudotus;
+        const y = (y0 - h) + p * (h - poniKoko() * 0.06);
+        piirraPuomi(e.x + p * lev * 0.15, y, lev, e.vari, p * 0.35);
+      } else {
+        piirraPuomi(e.x, y0 - h, lev, e.vari, 0);
+      }
+      ctx.restore();
+    }
+
+    function piirraPuomi(cx, cy, lev, vari, kulma) {
+      const pk = Math.max(6, poniKoko() * 0.08);
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(kulma);
+      const osat = 6;
+      for (let i = 0; i < osat; i++) {
+        ctx.fillStyle = i % 2 === 0 ? vari : '#ffffff';
+        ctx.fillRect(-lev / 2 - pk + i * (lev + 2 * pk) / osat, -pk / 2, (lev + 2 * pk) / osat + 0.5, pk);
+      }
+      ctx.strokeStyle = '#444';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(-lev / 2 - pk, -pk / 2, lev + 2 * pk, pk);
+      ctx.restore();
+    }
+
+    function piirra() {
+      const y0 = maaY();
+      // taivas
+      ctx.fillStyle = '#7ec8f5';
+      ctx.fillRect(0, 0, L, y0);
+      // hiekkakenttä
+      ctx.fillStyle = '#d9b77a';
+      ctx.fillRect(0, y0, L, K - y0);
+      ctx.fillStyle = '#c9a265';
+      ctx.fillRect(0, y0, L, 4);
+
+      if (tila === 'alku') return;
+
+      for (const e of esteet) piirraEste(e);
+
+      // maali 🏁
+      if (maali.x < L * 1.5) {
+        ctx.font = poniKoko() * 0.9 + 'px system-ui, sans-serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+        ctx.fillText('🏁', maali.x, y0);
+      }
+
+      // poni ja ratsastaja (käännetään menemään oikealle)
+      const s = poniKoko();
+      const nousu = ilmassa ? Math.sin(hyppyT * Math.PI) * hyppyKork() : 0;
+      let heilu = 0;
+      if (kieltoAika > 0) heilu = Math.sin(kieltoAika * 30) * s * 0.04;
+      ctx.save();
+      ctx.translate(poniX() + heilu, y0 - nousu);
+      ctx.scale(-1, 1);
+      ctx.font = s + 'px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'alphabetic';
+      ctx.fillText('🏇', 0, -s * 0.08);
+      ctx.restore();
+
+      // pisteet
+      ctx.fillStyle = '#3a2a10';
+      ctx.font = 'bold ' + Math.max(24, L * 0.07) + 'px system-ui, sans-serif';
+      ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+      ctx.fillText('⭐ ' + pisteet, 16, 16);
+
+      // viesti
+      if (viestiAika > 0) {
+        ctx.font = 'bold ' + Math.max(22, L * 0.065) + 'px system-ui, sans-serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillStyle = 'rgba(255,255,255,0.85)';
+        const w = ctx.measureText(viesti).width + 32;
+        const vy = K * 0.25;
+        ctx.fillRect(L / 2 - w / 2, vy - 30, w, 60);
+        ctx.fillStyle = '#3a2a10';
+        ctx.fillText(viesti, L / 2, vy);
+      }
+    }
+
+    function silmukka(nyt) {
+      if (tila === 'ajo') {
+        const dt = Math.min(0.05, (nyt - edellinen) / 1000);
+        edellinen = nyt;
+        paivita(dt);
+      }
+      piirra();
+      requestAnimationFrame(silmukka);
+    }
+    requestAnimationFrame(silmukka);
+
+    // ohjaus: napautus, hiiri tai välilyönti / nuoli ylös
+    kangas.addEventListener('pointerdown', (ev) => { ev.preventDefault(); hyppaa(); });
+    window.addEventListener('keydown', (ev) => {
+      if (ev.code === 'Space' || ev.code === 'ArrowUp') { ev.preventDefault(); hyppaa(); }
+    });
+    document.getElementById('aloitaNappi').addEventListener('click', aloita);
+    document.getElementById('uudestaanNappi').addEventListener('click', aloita);
+    document.addEventListener('touchmove', (ev) => ev.preventDefault(), { passive: false });
+  </script>
 </body>
 </html>
