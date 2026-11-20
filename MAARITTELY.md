@@ -39,6 +39,7 @@ Kirjoita säännöt muotoon **"Kun … niin …"**. Jokaisen säännön voi test
 | 10 | Kun tulee okseri, niin tulee kaksi korkeaa estettä täysin peräkkäin. Kummankin yli hypätään omalla hypyllä, ja kummastakin saa omat pisteet (hyvä 20, puomi putoaa 10). Okseri vie radalta kaksi esteen paikkaa. | ✓ |
 | 11 | Kun puomi putoaa, niin kuuluu "kolks"-ääni 🪵. | |
 | 12 | Kun poni laukkaa, niin kuuluu kavioiden kopse 🐴. Kun poni on ilmassa tai seisoo, niin kopse on hiljaa. | |
+| 13 | Kun poni laukkaa, niin sen jalat liikkuvat. Kun poni on ilmassa, niin jalat ovat koukussa niin kuin hypyssä. Kun poni seisoo, niin jalat ovat paikallaan. | |
 
 ## 5. Toivelista
 
@@ -53,6 +54,7 @@ Kirjoita säännöt muotoon **"Kun … niin …"**. Jokaisen säännön voi test
 ### Kiva (lisätään myöhemmin)
 - Eri esteitä: vesieste 💧, korkea este ⬆️ ja okseri ↔️ (säännöt 7–10, tehdään versiossa 2)
 - Äänet 🔊: puomin "kolks" ja kavioiden kopse (säännöt 11–12, tehdään versiossa 3)
+- Jalat liikkuvat, kun poni liikkuu 🐴: poni ja ratsastaja piirretään itse (sääntö 13, tehdään versiossa 4)
 
 ### Myöhemmin (ehkä joskus)
 -
@@ -60,7 +62,7 @@ Kirjoita säännöt muotoon **"Kun … niin …"**. Jokaisen säännön voi test
 ## 6. Ulkonäkö
 
 - **Värit:** hiekan värinen kenttä ja sininen taivas 🟫🟦
-- **Hahmot ja esineet:** poni ja ratsastaja 🏇. Esteet ovat piirrettyjä puomeja: puna-valkoisia 🔴⚪, sini-valkoisia 🔵⚪ ja kelta-valkoisia 🟡⚪, vuorotellen. Vesieste on sininen vesiallas 💧. Korkea este ja okserin esteet ovat korkeampia puomiesteitä.
+- **Hahmot ja esineet:** poni ja ratsastaja, piirretty itse koodilla (ei emoji). Poni on musta, ja sillä on musta harja ⚫. Ratsastajalla on vaaleanpunainen takki 🩷 ja musta kypärä. Esteet ovat piirrettyjä puomeja: puna-valkoisia 🔴⚪, sini-valkoisia 🔵⚪ ja kelta-valkoisia 🟡⚪, vuorotellen. Vesieste on sininen vesiallas 💧. Korkea este ja okserin esteet ovat korkeampia puomiesteitä.
 - **Äänet:** kyllä 🔊: puomin "kolks" ja kavioiden kopse. Äänet tehdään koodilla.
 
 ## 7. Versiot
@@ -71,3 +73,4 @@ Kirjoita säännöt muotoon **"Kun … niin …"**. Jokaisen säännön voi test
 | 1 | Ensimmäinen toimiva versio | 20.11.2026 |
 | 2 | Uusi versio | 20.11.2026 |
 | 3 | Äänet | 20.11.2026 |
+| 4 | Ponin jalat liikkuu | 20.11.2026 |
