@@ -37,9 +37,9 @@ Kirjoita säännöt muotoon **"Kun … niin …"**. Jokaisen säännön voi test
 | 8 | Kun poni hyppää vesiesteen yli hyvin, niin saa 10 pistettä. Kun napauttaa väärään aikaan, niin poni astuu veteen, ruudulla lukee "Polskis!" 💦 ja saa 5 pistettä. | ✓ |
 | 9 | Kun tulee korkea este, niin pitää napauttaa tarkemmin kuin tavallisella esteellä. Hyvästä hypystä saa 20 pistettä ja jos puomi putoaa, 10 pistettä. | ✓ |
 | 10 | Kun tulee okseri, niin tulee kaksi korkeaa estettä täysin peräkkäin. Kummankin yli hypätään omalla hypyllä, ja kummastakin saa omat pisteet (hyvä 20, puomi putoaa 10). Okseri vie radalta kaksi esteen paikkaa. | ✓ |
-| 11 | Kun puomi putoaa, niin kuuluu "kolks"-ääni 🪵. | |
-| 12 | Kun poni laukkaa, niin kuuluu kavioiden kopse 🐴. Kun poni on ilmassa tai seisoo, niin kopse on hiljaa. | |
-| 13 | Kun poni laukkaa, niin sen jalat liikkuvat. Kun poni on ilmassa, niin jalat ovat koukussa niin kuin hypyssä. Kun poni seisoo, niin jalat ovat paikallaan. | |
+| 11 | Kun puomi putoaa, niin kuuluu "kolks"-ääni 🪵. | ✓ |
+| 12 | Kun poni laukkaa, niin kuuluu kavioiden kopse 🐴. Kun poni on ilmassa tai seisoo, niin kopse on hiljaa. | ✓ |
+| 13 | Kun poni laukkaa, niin sen jalat liikkuvat. Kun poni on ilmassa, niin jalat ovat koukussa niin kuin hypyssä. Kun poni seisoo, niin jalat ovat paikallaan. | ✓ |
 
 ## 5. Toivelista
 
@@ -74,3 +74,4 @@ Kirjoita säännöt muotoon **"Kun … niin …"**. Jokaisen säännön voi test
 | 2 | Uusi versio | 20.11.2026 |
 | 3 | Äänet | 20.11.2026 |
 | 4 | Ponin jalat liikkuu | 20.11.2026 |
+| 5 | Kaikki säännöt testattu | 24.11.2026 |
