@@ -80,7 +80,7 @@
     const KORKEA_ALKU = 0.3;         // korkea este: tarkempi ikkuna (sääntö 9)
     const KORKEA_LOPPU = 0.65;
     const OKSERI_VALI = 1.25;        // sekuntia okserin kahden esteen välillä
-    const KIELTO_AIKA = 1.2;         // kuinka kauan poni seisoo kieltäytyessään
+    const KIELTO_AIKA = 3.0;         // kuinka kauan poni seisoo kieltäytyessään (sääntö 14: tippuminen ja kiipeäminen)
 
     const kangas = document.getElementById('kangas');
     const ctx = kangas.getContext('2d');
@@ -400,7 +400,7 @@
       return [a, a - koukku];
     }
 
-    function piirraPoni(c, x, y, s, asento, askel) {
+    function piirraPoni(c, x, y, s, asento, askel, ratsastajaMukana = true) {
       const vaihe = askel % 1;
       const pomppu = asento === 'laukka' ? -Math.abs(Math.sin(vaihe * Math.PI * 2)) * 0.04 * s : 0;
       const kallistus = asento === 'ilmassa' ? -0.12 : 0;
@@ -460,23 +460,50 @@
       c.beginPath(); c.ellipse(0.0, -0.8 * s, 0.13 * s, 0.045 * s, 0, 0, Math.PI * 2); c.fill();
 
       // ratsastaja
-      const nojaa = asento === 'ilmassa' ? 0.35 : 0.15;
-      const lonkka = [0.0, -0.84 * s];
-      const olka = [lonkka[0] + Math.sin(nojaa) * 0.26 * s, lonkka[1] - Math.cos(nojaa) * 0.26 * s];
-      // jalka ja saapas
-      c.strokeStyle = HOUSUT; c.lineCap = 'round'; c.lineWidth = 0.07 * s;
-      c.beginPath(); c.moveTo(lonkka[0], lonkka[1]); c.lineTo(0.12 * s, -0.7 * s); c.stroke();
-      c.strokeStyle = '#111'; c.lineWidth = 0.06 * s;
-      c.beginPath(); c.moveTo(0.12 * s, -0.7 * s); c.lineTo(0.06 * s, -0.55 * s); c.stroke();
+      if (ratsastajaMukana) {
+        c.save();
+        c.translate(0, -0.84 * s);
+        piirraRatsastaja(c, s, asento === 'ilmassa' ? 0.35 : 0.15, true);
+        c.restore();
+      }
+
+      c.restore();
+    }
+
+    // ratsastaja piirretään niin, että lonkka on kohdassa (0, 0)
+    // seisoo = null: istuu satulassa; seisoo = luku: seisoo, ja luku on jalkojen heilahdus (kävely)
+    function piirraRatsastaja(c, s, nojaa, ohjat, seisoo = null) {
+      const olka = [Math.sin(nojaa) * 0.26 * s, -Math.cos(nojaa) * 0.26 * s];
+      c.lineCap = 'round';
+      if (seisoo === null) {
+        // jalka ja saapas (istuu)
+        c.strokeStyle = HOUSUT; c.lineWidth = 0.07 * s;
+        c.beginPath(); c.moveTo(0, 0); c.lineTo(0.12 * s, 0.14 * s); c.stroke();
+        c.strokeStyle = '#111'; c.lineWidth = 0.06 * s;
+        c.beginPath(); c.moveTo(0.12 * s, 0.14 * s); c.lineTo(0.06 * s, 0.29 * s); c.stroke();
+      } else {
+        // kaksi suoraa jalkaa, jotka heiluvat kävellessä
+        for (const suunta of [1, -1]) {
+          const a = seisoo * suunta;
+          const px = Math.sin(a) * 0.17 * s, py = Math.cos(a) * 0.17 * s;
+          const sx = px + Math.sin(a) * 0.15 * s, sy = py + Math.cos(a) * 0.15 * s;
+          c.strokeStyle = HOUSUT; c.lineWidth = 0.065 * s;
+          c.beginPath(); c.moveTo(0, 0); c.lineTo(px, py); c.stroke();
+          c.strokeStyle = '#111'; c.lineWidth = 0.06 * s;
+          c.beginPath(); c.moveTo(px, py); c.lineTo(sx, sy); c.stroke();
+        }
+      }
       // vartalo (vaaleanpunainen takki)
       c.strokeStyle = TAKKI; c.lineWidth = 0.12 * s;
-      c.beginPath(); c.moveTo(lonkka[0], lonkka[1]); c.lineTo(olka[0], olka[1]); c.stroke();
+      c.beginPath(); c.moveTo(0, 0); c.lineTo(olka[0], olka[1]); c.stroke();
       // käsi ja ohjat
-      const kasi = [0.27 * s, -0.9 * s];
+      const kasi = ohjat ? [0.27 * s, -0.06 * s] : [olka[0] + 0.18 * s, olka[1] - 0.1 * s];
       c.lineWidth = 0.05 * s;
       c.beginPath(); c.moveTo(olka[0], olka[1]); c.lineTo(kasi[0], kasi[1]); c.stroke();
-      c.strokeStyle = '#5a3412'; c.lineWidth = Math.max(1, 0.012 * s);
-      c.beginPath(); c.moveTo(kasi[0], kasi[1]); c.lineTo(0.62 * s, -0.9 * s); c.stroke();
+      if (ohjat) {
+        c.strokeStyle = '#5a3412'; c.lineWidth = Math.max(1, 0.012 * s);
+        c.beginPath(); c.moveTo(kasi[0], kasi[1]); c.lineTo(0.62 * s, -0.06 * s); c.stroke();
+      }
       // pää ja kypärä
       const pa = [olka[0] + 0.03 * s, olka[1] - 0.1 * s];
       c.fillStyle = IHO;
@@ -484,7 +511,47 @@
       c.fillStyle = KYPARA;
       c.beginPath(); c.arc(pa[0], pa[1] - 0.01 * s, 0.082 * s, Math.PI, 0); c.fill();
       c.fillRect(pa[0], pa[1] - 0.04 * s, 0.1 * s, 0.022 * s);   // lippa
+    }
 
+    // sääntö 14: kieltäytyessä ratsastaja tippuu, nousee seisomaan,
+    // kävelee ponin luo ja hyppää satulaan
+    function piirraTippuva(c, hx, y0, s, q) {
+      const satula = [hx, y0 - 0.84 * s];
+      const maa = [hx + 0.75 * s, y0 - 0.06 * s];          // makaa maassa (lonkka)
+      const pysty = [maa[0], y0 - 0.32 * s];                // seisoo samassa kohdassa
+      const ponilla = [hx + 0.12 * s, y0 - 0.32 * s];       // seisoo ponin vieressä
+      const pehmea = t => t * t * (3 - 2 * t);
+      const valilla = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+      let paikka, kulma = 0, seisoo = 0, kaannetty = false, nojaa = 0.05;
+      if (q < 0.2) {                 // 1. tippuu eteenpäin
+        const t = pehmea(q / 0.2);
+        paikka = valilla(satula, maa, t);
+        paikka[1] -= Math.sin(t * Math.PI) * 0.3 * s;
+        kulma = t * Math.PI / 2;
+        seisoo = null; nojaa = 0.15;
+      } else if (q < 0.35) {         // 2. makaa maassa
+        paikka = maa; kulma = Math.PI / 2;
+      } else if (q < 0.5) {          // 3. nousee seisomaan
+        const t = pehmea((q - 0.35) / 0.15);
+        paikka = valilla(maa, pysty, t);
+        kulma = (1 - t) * Math.PI / 2;
+      } else if (q < 0.8) {          // 4. kävelee ponin luo
+        const t = (q - 0.5) / 0.3;
+        paikka = valilla(pysty, ponilla, t);
+        paikka[1] -= Math.abs(Math.sin(t * Math.PI * 4)) * 0.02 * s;
+        seisoo = Math.sin(t * Math.PI * 4) * 0.4;
+        kaannetty = true;            // katsoo ponia kohti
+      } else {                       // 5. hyppää satulaan
+        const t = pehmea((q - 0.8) / 0.2);
+        paikka = valilla(ponilla, satula, t);
+        paikka[1] -= Math.sin(t * Math.PI) * 0.25 * s;
+        seisoo = t < 0.5 ? 0 : null; nojaa = 0.15;
+      }
+      c.save();
+      c.translate(paikka[0], paikka[1]);
+      c.rotate(kulma);
+      if (kaannetty) c.scale(-1, 1);
+      piirraRatsastaja(c, s, nojaa, false, seisoo);
       c.restore();
     }
 
@@ -516,7 +583,9 @@
       let heilu = 0;
       if (kieltoAika > 0) heilu = Math.sin(kieltoAika * 30) * s * 0.04;
       const asento = ilmassa ? 'ilmassa' : (kieltoAika > 0 ? 'seisoo' : 'laukka');
-      piirraPoni(ctx, poniX() + heilu, y0 - nousu, s * 1.1, asento, askel);
+      const tippuu = kieltoAika > 0;
+      piirraPoni(ctx, poniX() + heilu, y0 - nousu, s * 1.1, asento, askel, !tippuu);
+      if (tippuu) piirraTippuva(ctx, poniX() + heilu, y0, s * 1.1, 1 - kieltoAika / KIELTO_AIKA);
 
       // pisteet
       ctx.fillStyle = '#3a2a10';
