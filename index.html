@@ -40,6 +40,19 @@
       touch-action: manipulation;
     }
     button:active { transform: translateY(4px); box-shadow: 0 2px 0 #1d7a36; }
+    .korttirivi {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+      width: 100%; max-width: 560px; margin-top: 12px;
+    }
+    @media (max-width: 480px) { .korttirivi { grid-template-columns: repeat(2, 1fr); } }
+    .ponikortti {
+      margin: 0; min-width: 0; min-height: 0; padding: 6px 4px 10px;
+      border-radius: 20px; background: #d6eefc; color: #3a2a10;
+      box-shadow: 0 5px 0 #c9b48a; font-size: 1.15rem;
+      display: flex; flex-direction: column; align-items: center;
+    }
+    .ponikortti:active { box-shadow: 0 1px 0 #c9b48a; }
+    .ponikortti canvas { width: 120px; height: 100px; }
   </style>
 </head>
 <body>
@@ -50,6 +63,22 @@
     <h1>Ponit esteillä</h1>
     <p>Napauta, niin poni hyppää!</p>
     <button id="aloitaNappi">Aloita</button>
+  </div>
+
+  <div id="paikkaRuutu" class="ruutu piilossa">
+    <h1>Valitse paikka</h1>
+    <div id="paikkarivi" class="korttirivi"></div>
+  </div>
+
+  <div id="valinta" class="ruutu piilossa">
+    <h1>Valitse poni</h1>
+    <div id="ponirivi" class="korttirivi"></div>
+  </div>
+
+  <div id="satulaRuutu" class="ruutu piilossa">
+    <h1>Satulan kanssa vai ilman?</h1>
+    <button id="satulaKanssa">Satulan kanssa</button>
+    <button id="satulaIlman">Ilman satulaa</button>
   </div>
 
   <div id="loppu" class="ruutu piilossa">
@@ -71,7 +100,185 @@
       korkea:     { hyva: 20, huono: 10 },  // myös okserin esteet
     };
     const LAJIT = ['tavallinen', 'vesi', 'korkea', 'okseri']; // sääntö 7: arvotaan
-    const VARIT = ['#e53935', '#1e63d6', '#f5c400']; // puna, sini, kelta (vuorotellen)
+    // ---- Paikat (säännöt 22–23) ----
+    // tausta(c, W, Y): piirtää paikan kuvan taivaalle. W = leveys, Y = maan korkeus (horisontti)
+    function piirraEiffel(c, W, Y) {
+      const h = Math.min(Y * 0.6, W * 0.8), x = W * 0.74, b = h * 0.26;
+      c.fillStyle = '#6b5640';
+      c.beginPath();
+      c.moveTo(x - b, Y);
+      c.quadraticCurveTo(x - b * 0.35, Y - h * 0.35, x - b * 0.1, Y - h * 0.82);
+      c.lineTo(x + b * 0.1, Y - h * 0.82);
+      c.quadraticCurveTo(x + b * 0.35, Y - h * 0.35, x + b, Y);
+      c.closePath(); c.fill();
+      // kaari jalkojen välissä
+      c.fillStyle = '#7ec8f5';
+      c.beginPath(); c.moveTo(x - b * 0.62, Y);
+      c.quadraticCurveTo(x, Y - h * 0.32, x + b * 0.62, Y); c.closePath(); c.fill();
+      // tasanteet ja huippu
+      c.fillStyle = '#5a4734';
+      c.fillRect(x - b * 0.68, Y - h * 0.3, b * 1.36, h * 0.03);
+      c.fillRect(x - b * 0.34, Y - h * 0.58, b * 0.68, h * 0.025);
+      c.fillRect(x - b * 0.14, Y - h * 0.84, b * 0.28, h * 0.02);
+      c.strokeStyle = '#5a4734'; c.lineWidth = Math.max(2, h * 0.015);
+      c.beginPath(); c.moveTo(x, Y - h * 0.84); c.lineTo(x, Y - h); c.stroke();
+      // ristikko
+      c.strokeStyle = 'rgba(255,255,255,0.25)'; c.lineWidth = 1;
+      for (let i = 1; i < 8; i++) {
+        const yy = Y - h * 0.82 * i / 8, w = b * (1 - i / 8) * 0.9;
+        c.beginPath(); c.moveTo(x - w, yy); c.lineTo(x + w * 0.6, yy - h * 0.08); c.stroke();
+      }
+    }
+    function piirraNewYork(c, W, Y) {
+      const h = Math.min(Y * 0.6, W * 0.85);
+      const korkeudet = [0.5, 0.78, 0.6, 0.95, 0.55, 0.7];
+      const lev = W * 0.095;
+      korkeudet.forEach((k, i) => {
+        const x = W * 0.02 + i * lev * 1.02, hh = h * k;
+        c.fillStyle = i % 2 ? '#8e9fb6' : '#73859f';
+        c.fillRect(x, Y - hh, lev, hh);
+        c.fillStyle = 'rgba(255,240,170,0.8)';
+        const ik = lev / 5;
+        for (let yy = Y - hh + ik; yy < Y - ik * 2; yy += ik * 1.8)
+          for (let xx = x + ik * 0.7; xx < x + lev - ik; xx += ik * 1.6) c.fillRect(xx, yy, ik * 0.7, ik * 0.8);
+      });
+      // Vapaudenpatsas
+      const ph = Math.min(Y * 0.55, W * 0.6), x = W * 0.82;
+      c.fillStyle = '#a89c86';
+      c.fillRect(x - ph * 0.13, Y - ph * 0.35, ph * 0.26, ph * 0.35);
+      c.fillStyle = '#5fa38c';
+      c.beginPath();
+      c.moveTo(x - ph * 0.09, Y - ph * 0.35); c.lineTo(x - ph * 0.045, Y - ph * 0.78);
+      c.lineTo(x + ph * 0.045, Y - ph * 0.78); c.lineTo(x + ph * 0.09, Y - ph * 0.35);
+      c.closePath(); c.fill();
+      c.beginPath(); c.arc(x, Y - ph * 0.82, ph * 0.045, 0, Math.PI * 2); c.fill();
+      c.strokeStyle = '#5fa38c'; c.lineWidth = Math.max(2, ph * 0.035); c.lineCap = 'round';
+      c.beginPath(); c.moveTo(x + ph * 0.04, Y - ph * 0.74); c.lineTo(x + ph * 0.09, Y - ph * 0.98); c.stroke();
+      c.lineWidth = Math.max(1, ph * 0.012);
+      for (let i = -2; i <= 2; i++) {
+        const a = -Math.PI / 2 + i * 0.4;
+        c.beginPath(); c.moveTo(x, Y - ph * 0.85);
+        c.lineTo(x + Math.cos(a) * ph * 0.09, Y - ph * 0.85 + Math.sin(a) * ph * 0.09); c.stroke();
+      }
+      c.fillStyle = '#ffb300';
+      c.beginPath(); c.arc(x + ph * 0.09, Y - ph * 1.01, ph * 0.03, 0, Math.PI * 2); c.fill();
+    }
+    function piirraKuusi(c, x, Y, h) {
+      c.fillStyle = '#6b4423';
+      c.fillRect(x - h * 0.04, Y - h * 0.15, h * 0.08, h * 0.15);
+      for (let i = 0; i < 3; i++) {
+        c.fillStyle = i % 2 ? '#2e6b3a' : '#245a30';
+        const yy = Y - h * 0.1 - i * h * 0.28, w = h * (0.32 - i * 0.07);
+        c.beginPath(); c.moveTo(x - w, yy); c.lineTo(x, yy - h * 0.45); c.lineTo(x + w, yy); c.closePath(); c.fill();
+      }
+    }
+    function piirraMetsa(c, W, Y) {
+      const m = Math.min(Y, W * 1.2);
+      [[0.06, 0.42], [0.22, 0.58], [0.4, 0.46], [0.57, 0.62], [0.74, 0.44], [0.92, 0.56]]
+        .forEach(([x, k]) => piirraKuusi(c, W * x, Y, m * k));
+    }
+    function piirraMokki(c, x, Y, w) {
+      const h = w * 0.6;
+      c.fillStyle = '#b0302a'; c.fillRect(x - w / 2, Y - h, w, h);
+      c.fillStyle = '#fff';
+      c.fillRect(x - w / 2, Y - h, w * 0.05, h); c.fillRect(x + w / 2 - w * 0.05, Y - h, w * 0.05, h);
+      c.fillRect(x - w * 0.3, Y - h * 0.65, w * 0.2, w * 0.18);
+      c.fillRect(x + w * 0.08, Y - h * 0.7, w * 0.18, h * 0.7);
+      c.fillStyle = '#7a1f1a'; c.fillRect(x + w * 0.11, Y - h * 0.64, w * 0.12, h * 0.64);
+      c.fillStyle = '#3b3b3b';
+      c.beginPath(); c.moveTo(x - w * 0.58, Y - h); c.lineTo(x, Y - h - w * 0.38); c.lineTo(x + w * 0.58, Y - h); c.closePath(); c.fill();
+    }
+    function piirraRuotsi(c, W, Y) {
+      const m = Math.min(W, Y * 1.3);
+      piirraMokki(c, W * 0.18, Y, m * 0.3);
+      piirraMokki(c, W * 0.55, Y, m * 0.22);
+      piirraMokki(c, W * 0.85, Y, m * 0.34);
+    }
+    function piirraTanska(c, W, Y) {
+      const m = Math.min(W, Y * 1.3), x = W * 0.6, lev = m * 0.62, h = m * 0.22;
+      const muuri = '#d8c9a8', torni = '#cbb994', katto = '#5fa38c';
+      c.fillStyle = muuri; c.fillRect(x - lev / 2, Y - h, lev, h);
+      for (let i = 0; i < 9; i++) c.fillRect(x - lev / 2 + i * lev / 8.5, Y - h - h * 0.12, lev / 17, h * 0.12);
+      const tornit = [[-lev / 2, 1.5, 0.1], [lev / 2, 1.5, 0.1], [0, 2.2, 0.12]];
+      for (const [dx, k, tw] of tornit) {
+        const tx = x + dx, th = h * k, w = m * tw;
+        c.fillStyle = torni; c.fillRect(tx - w / 2, Y - th, w, th);
+        c.fillStyle = katto;
+        c.beginPath(); c.moveTo(tx - w * 0.65, Y - th); c.lineTo(tx, Y - th - h * 0.9); c.lineTo(tx + w * 0.65, Y - th); c.closePath(); c.fill();
+        c.fillStyle = '#4a3a2a'; c.fillRect(tx - w * 0.15, Y - th * 0.7, w * 0.3, w * 0.4);
+      }
+      // portti
+      c.fillStyle = '#4a3a2a';
+      c.beginPath(); c.moveTo(x - h * 0.2, Y); c.lineTo(x - h * 0.2, Y - h * 0.4);
+      c.arc(x, Y - h * 0.4, h * 0.2, Math.PI, 0); c.lineTo(x + h * 0.2, Y); c.closePath(); c.fill();
+      // Tanskan lippu keskitornin huipulla
+      const lx = x, ly = Y - h * 2.2 - h * 0.9;
+      c.strokeStyle = '#333'; c.lineWidth = Math.max(1, m * 0.006);
+      c.beginPath(); c.moveTo(lx, ly); c.lineTo(lx, ly - h * 0.5); c.stroke();
+      const fw = h * 0.42, fh = h * 0.28, fy = ly - h * 0.5;
+      c.fillStyle = '#c8102e'; c.fillRect(lx, fy, fw, fh);
+      c.fillStyle = '#fff'; c.fillRect(lx + fw * 0.3, fy, fw * 0.12, fh); c.fillRect(lx, fy + fh * 0.44, fw, fh * 0.12);
+    }
+    function piirraPalmu(c, x, Y, h) {
+      c.strokeStyle = '#8a5a2b'; c.lineWidth = h * 0.06; c.lineCap = 'round';
+      c.beginPath(); c.moveTo(x, Y); c.quadraticCurveTo(x + h * 0.15, Y - h * 0.5, x + h * 0.08, Y - h); c.stroke();
+      const tx = x + h * 0.08, ty = Y - h;
+      c.strokeStyle = '#2f8f3a'; c.lineWidth = h * 0.05;
+      for (const [dx, dy] of [[-0.4, 0.15], [-0.3, -0.1], [0, -0.2], [0.3, -0.1], [0.42, 0.15]]) {
+        c.beginPath(); c.moveTo(tx, ty);
+        c.quadraticCurveTo(tx + dx * h * 0.6, ty + (dy - 0.15) * h, tx + dx * h, ty + (dy + 0.12) * h); c.stroke();
+      }
+    }
+    function piirraEspanja(c, W, Y) {
+      const m = Math.min(W, Y * 1.3);
+      const ax = W * 0.8, ay = Y * 0.3, r = m * 0.09;
+      c.strokeStyle = '#ffc400'; c.lineWidth = Math.max(2, r * 0.12); c.lineCap = 'round';
+      for (let i = 0; i < 12; i++) {
+        const a = i * Math.PI / 6;
+        c.beginPath(); c.moveTo(ax + Math.cos(a) * r * 1.25, ay + Math.sin(a) * r * 1.25);
+        c.lineTo(ax + Math.cos(a) * r * 1.6, ay + Math.sin(a) * r * 1.6); c.stroke();
+      }
+      c.fillStyle = '#ffd23f'; c.beginPath(); c.arc(ax, ay, r, 0, Math.PI * 2); c.fill();
+      piirraPalmu(c, W * 0.12, Y, m * 0.45);
+      piirraPalmu(c, W * 0.45, Y, m * 0.58);
+      piirraPalmu(c, W * 0.72, Y, m * 0.4);
+    }
+    function piirraPisa(c, W, Y) {
+      const h = Math.min(Y * 0.6, W * 0.75), w = h * 0.2, x = W * 0.7;
+      c.save();
+      c.translate(x, Y);
+      c.rotate(0.09);                               // kalteva torni
+      const kerrokset = 8, kh = h / kerrokset;
+      for (let i = 0; i < kerrokset; i++) {
+        const yy = -(i + 1) * kh, ww = i === kerrokset - 1 ? w * 0.7 : w;
+        c.fillStyle = i % 2 ? '#efe6d2' : '#e4d9bf';
+        c.fillRect(-ww / 2, yy, ww, kh);
+        // kaaret
+        c.fillStyle = '#b9ab8c';
+        const n = 4;
+        for (let k = 0; k < n; k++) {
+          const ax = -ww / 2 + (k + 0.5) * ww / n;
+          c.beginPath(); c.moveTo(ax - ww / n * 0.28, yy + kh * 0.85);
+          c.lineTo(ax - ww / n * 0.28, yy + kh * 0.45);
+          c.arc(ax, yy + kh * 0.45, ww / n * 0.28, Math.PI, 0);
+          c.lineTo(ax + ww / n * 0.28, yy + kh * 0.85); c.closePath(); c.fill();
+        }
+        // kerroksen reuna
+        c.fillStyle = '#cfc2a4';
+        c.fillRect(-ww / 2 - w * 0.04, yy, ww + w * 0.08, kh * 0.1);
+      }
+      c.restore();
+    }
+    const PAIKAT = [
+      { nimi: 'Pariisi',  emoji: '🗼', varit: ['#0055a4', '#ffffff', '#ef4135'], tausta: piirraEiffel },
+      { nimi: 'New York', emoji: '🗽', varit: ['#1e3a8a', '#d62828', '#ffffff'], tausta: piirraNewYork },
+      { nimi: 'Metsä',    emoji: '🌲', varit: ['#2e7d32', '#7a4a22'],            tausta: piirraMetsa },
+      { nimi: 'Ruotsi',   emoji: '🇸🇪', varit: ['#1d5fa8', '#f5c400'],            tausta: piirraRuotsi },
+      { nimi: 'Tanska',   emoji: '🇩🇰', varit: ['#c8102e', '#ffffff'],            tausta: piirraTanska },
+      { nimi: 'Espanja',  emoji: '🇪🇸', varit: ['#c60b1e', '#ffc400'],            tausta: piirraEspanja },
+      { nimi: 'Italia',   emoji: '🇮🇹', varit: ['#009246', '#ffffff', '#ce2b37'], tausta: piirraPisa },
+    ];
+    let valittuPaikka = PAIKAT[0];
 
     // ---- Pelin tuntuma ----
     const HYPPY_AIKA = 1.0;          // sekuntia ilmassa
@@ -79,6 +286,10 @@
     const HYVA_LOPPU = 0.8;
     const KORKEA_ALKU = 0.3;         // korkea este: tarkempi ikkuna (sääntö 9)
     const KORKEA_LOPPU = 0.65;
+    // sääntö 21: pitkä painallus = korkea hyppy
+    const HYPPY_MATALA = 0.55;       // lyhyen napautuksen korkeus (osuus täydestä hypystä)
+    const HYPPY_KASVU = 0.3;         // sekuntia pitämistä täyteen korkeuteen
+    const KORKEA_RAJA = 0.85;        // näin korkea hyppy tarvitaan korkealle esteelle ja okserille
     const OKSERI_VALI = 1.25;        // sekuntia okserin kahden esteen välillä
     const KIELTO_AIKA = 3.0;         // kuinka kauan poni seisoo kieltäytyessään (sääntö 14: tippuminen ja kiipeäminen)
 
@@ -164,7 +375,7 @@
       }
     }
 
-    let tila = 'alku'; // alku, ajo, loppu
+    let tila = 'alku'; // alku, valinta, ajo, loppu
     // sääntö 15: ennätys muistetaan localStoragessa
     let ennatys = 0;
     try { ennatys = parseInt(localStorage.getItem('ponitEnnatys'), 10) || 0; } catch (e) {}
@@ -175,17 +386,20 @@
       }
     }
     let askel = 0;
+    let pidossa = false, hyppyVoima = 1;
+    let taustaSiirto = 0;   // sääntö 24: kuinka paljon tausta on liikkunut
+    const TAUSTA_NOPEUS = 0.15;   // tausta liikkuu hitaammin kuin esteet
     let pisteet, kiellot, esteet, maali, hyppyT, ilmassa, kieltoAika, viesti, viestiAika, edellinen;
 
     function aloita() {
       pisteet = 0; kiellot = 0;
       esteet = [];
       // sääntö 7: arvotaan radan 10 esteen paikat. Okseri vie kaksi paikkaa (sääntö 10).
-      let x = L * 1.1, varinro = 0;
+      let x = L * 1.1;
       const uusi = (laji, xx) => {
         const e = {
           x: xx, laji,
-          vari: laji === 'vesi' ? null : VARIT[varinro++ % VARIT.length],
+          vari: laji === 'vesi' ? null : valittuPaikka.varit,   // sääntö 23: paikan värit
           tulos: null,       // null, 'hyva', 'puomi', 'polskis', 'kielto'
           odottaa: false,    // poni oli ilmassa kun este tuli kohdalle
           puomiPudotus: 0, haalistus: 1,
@@ -207,7 +421,8 @@
         x += valimatka();
       }
       maali = { x };
-      hyppyT = 0; ilmassa = false; kieltoAika = 0;
+      hyppyT = 0; ilmassa = false; kieltoAika = 0; tippuuLaskeutuessa = false;
+      taustaSiirto = 0;
       viesti = ''; viestiAika = 0;
       tila = 'ajo';
       if (document.activeElement) document.activeElement.blur();
@@ -218,7 +433,7 @@
 
     function hyppaa() {
       if (tila !== 'ajo' || ilmassa || kieltoAika > 0) return;
-      ilmassa = true; hyppyT = 0;
+      ilmassa = true; hyppyT = 0; hyppyVoima = HYPPY_MATALA;
     }
 
     function naytaViesti(t) { viesti = t; viestiAika = 1.2; }
@@ -238,6 +453,8 @@
 
       // hyppy
       if (ilmassa) {
+        // sääntö 21: korkeus kasvaa niin kauan kuin painetaan (hypyn alkuosassa)
+        if (pidossa && hyppyT < 0.4) hyppyVoima = Math.min(1, hyppyVoima + dt * (1 - HYPPY_MATALA) / HYPPY_KASVU);
         hyppyT += dt / HYPPY_AIKA;
         if (hyppyT >= 1) { ilmassa = false; hyppyT = 0; }
       }
@@ -249,6 +466,8 @@
         liike = 0;
         if (kieltoAika <= 0 && kiellot >= KIELLOT_LOPPU) { lopeta(false); return; }
       }
+
+      taustaSiirto += liike * TAUSTA_NOPEUS;   // sääntö 24: pysähtyy, kun liike = 0
 
       const px = poniX();
       const nokka = px + Math.max(nopeus() * 0.25, poniKoko() * 0.95); // este ponin nenän edessä
@@ -282,7 +501,8 @@
           const alku = korkea ? KORKEA_ALKU : HYVA_ALKU;
           const loppu = korkea ? KORKEA_LOPPU : HYVA_LOPPU;
           const p = PISTEET[e.laji];
-          if (ilmassa && hyppyT >= alku && hyppyT <= loppu) {
+          const tarpeeksiKorkea = !korkea || hyppyVoima >= KORKEA_RAJA;   // sääntö 21
+          if (ilmassa && hyppyT >= alku && hyppyT <= loppu && tarpeeksiKorkea) {
             e.tulos = 'hyva';
             pisteet += p.hyva;                       // säännöt 2, 8, 9
             naytaViesti('Hieno hyppy! ⭐ +' + p.hyva);
@@ -295,8 +515,17 @@
             pisteet += p.huono;                      // säännöt 3, 9
             naytaViesti('Puomi putosi! +' + p.huono);
             kolks();
+            // sääntö 20: ilman satulaa ratsastaja tippuu joka toinen kerta (sattumalta)
+            if (!satulaPaalla && Math.random() < 0.5) tippuuLaskeutuessa = true;
           }
         }
+      }
+
+      // sääntö 20: tippuminen alkaa, kun poni on laskeutunut. Ei lasketa kieltäytymiseksi.
+      if (tippuuLaskeutuessa && !ilmassa && kieltoAika <= 0) {
+        tippuuLaskeutuessa = false;
+        kieltoAika = KIELTO_AIKA;
+        naytaViesti('Ratsastaja tippui! 🤸');
       }
 
       kopse(dt, !ilmassa && kieltoAika <= 0);   // sääntö 12
@@ -368,7 +597,7 @@
       ctx.rotate(kulma);
       const osat = 6;
       for (let i = 0; i < osat; i++) {
-        ctx.fillStyle = i % 2 === 0 ? vari : '#ffffff';
+        ctx.fillStyle = vari[i % vari.length];
         ctx.fillRect(-lev / 2 - pk + i * (lev + 2 * pk) / osat, -pk / 2, (lev + 2 * pk) / osat + 0.5, pk);
       }
       ctx.strokeStyle = '#444';
@@ -379,7 +608,18 @@
 
     // ---- Itse piirretty poni ja ratsastaja ----
     // x, y = kohta maassa ponin keskellä. Poni katsoo oikealle.
-    const PONI = '#2a2a2a', PONI_TAKA = '#151515', HARJA = '#000000';
+    // sääntö 16: kuusi ponia (värit määrittelyn kohdasta Ulkonäkö)
+    const PONIT = [
+      { nimi: 'Tuuli',       runko: '#f4f4f0', taka: '#d2d2cc', harja: ['#9a9a9a'], silma: '#222' },
+      { nimi: 'Barbi',       runko: '#8b5a2b', taka: '#6b4420', harja: ['#f0dca0'] },
+      { nimi: 'Pikku Mimmi', runko: '#7a4a26', taka: '#5c371c', harja: ['#ffffff'], laikut: '#ffffff', koko: 0.67 },
+      { nimi: 'Manu',        runko: '#c99d6e', taka: '#a37d54', harja: ['#9a9a9a', '#ffffff'], laikut: '#ffffff', koko: 0.67 },
+      { nimi: 'Alli',        runko: '#4a2c17', taka: '#33200f', harja: ['#c99d6e'] },
+      { nimi: 'Edvin',       runko: '#2a2a2a', taka: '#151515', harja: ['#000000'] },
+    ];
+    let valittuPoni = PONIT[5];
+    let satulaPaalla = true;     // sääntö 19
+    let tippuuLaskeutuessa = false;   // sääntö 20: ratsastaja tippuu, kun poni on maassa
     const TAKKI = '#ff7eb6', HOUSUT = '#f4efe6', IHO = '#f2c9a0', KYPARA = '#111111';
 
     function jalka(c, s, lx, ly, a, b, vari) {
@@ -410,7 +650,11 @@
       return [a, a - koukku];
     }
 
-    function piirraPoni(c, x, y, s, asento, askel, ratsastajaMukana = true) {
+    // sääntö 18: shetlanninponit (koko 0.67) ovat kaksi kolmasosaa muista, ratsastaja pysyy isona
+    function piirraPoni(c, x, y, sIso, asento, askel, ratsastajaMukana = true, pv = valittuPoni) {
+      const s = sIso * (pv.koko || 1);
+      const PONI = pv.runko, PONI_TAKA = pv.taka, HARJA = pv.harja[0];
+      const harjaVari = (i) => pv.harja[i % pv.harja.length];
       const vaihe = askel % 1;
       const pomppu = asento === 'laukka' ? -Math.abs(Math.sin(vaihe * Math.PI * 2)) * 0.04 * s : 0;
       const kallistus = asento === 'ilmassa' ? -0.12 : 0;
@@ -428,7 +672,7 @@
       c.strokeStyle = HARJA; c.lineCap = 'round'; c.lineWidth = 0.07 * s;
       c.beginPath(); c.moveTo(-0.34 * s, -0.7 * s);
       c.quadraticCurveTo(-0.55 * s, -0.68 * s + heilahdus, -0.58 * s, -0.42 * s + heilahdus); c.stroke();
-      c.lineWidth = 0.035 * s;
+      c.lineWidth = 0.035 * s; c.strokeStyle = harjaVari(1);
       c.beginPath(); c.moveTo(-0.34 * s, -0.7 * s);
       c.quadraticCurveTo(-0.5 * s, -0.6 * s + heilahdus, -0.5 * s, -0.4 * s + heilahdus); c.stroke();
 
@@ -448,14 +692,28 @@
       c.beginPath();
       c.moveTo(0.41 * s, -1.04 * s); c.lineTo(0.43 * s, -1.15 * s); c.lineTo(0.47 * s, -1.05 * s);
       c.closePath(); c.fill();
+      // kirjavat laikut
+      if (pv.laikut) {
+        c.save();
+        c.beginPath(); c.ellipse(0, -0.66 * s, 0.37 * s, 0.16 * s, 0, 0, Math.PI * 2);
+        c.moveTo(0.16 * s, -0.76 * s); c.lineTo(0.40 * s, -1.05 * s); c.lineTo(0.52 * s, -0.98 * s); c.lineTo(0.36 * s, -0.58 * s); c.closePath();
+        c.clip();
+        c.fillStyle = pv.laikut;
+        c.beginPath(); c.ellipse(-0.18 * s, -0.62 * s, 0.13 * s, 0.11 * s, 0.4, 0, Math.PI * 2); c.fill();
+        c.beginPath(); c.ellipse(0.12 * s, -0.56 * s, 0.11 * s, 0.07 * s, -0.3, 0, Math.PI * 2); c.fill();
+        c.beginPath(); c.ellipse(0.36 * s, -0.78 * s, 0.07 * s, 0.12 * s, 0.6, 0, Math.PI * 2); c.fill();
+        c.beginPath(); c.ellipse(-0.32 * s, -0.74 * s, 0.06 * s, 0.05 * s, 0, 0, Math.PI * 2); c.fill();
+        c.restore();
+      }
       // silmä
-      c.fillStyle = '#fff';
+      c.fillStyle = pv.silma || '#fff';
       c.beginPath(); c.arc(0.52 * s, -0.99 * s, 0.018 * s, 0, Math.PI * 2); c.fill();
       // harja
       c.strokeStyle = HARJA; c.lineWidth = 0.06 * s;
       c.beginPath(); c.moveTo(0.42 * s, -1.06 * s); c.lineTo(0.17 * s, -0.78 * s); c.stroke();
       c.lineWidth = 0.025 * s;
       for (let i = 0; i < 4; i++) {
+        c.strokeStyle = harjaVari(i);
         const t = i / 3;
         const hx = 0.4 * s - t * 0.2 * s, hy = -1.03 * s + t * 0.23 * s;
         c.beginPath(); c.moveTo(hx, hy); c.lineTo(hx - 0.07 * s, hy + 0.02 * s + heilahdus * 0.3); c.stroke();
@@ -465,15 +723,17 @@
       k = jalanKulmat(asento, vaihe, false, true); jalka(c, s, lantio[0], lantio[1], k[0], k[1], PONI);
       k = jalanKulmat(asento, vaihe, true, true);  jalka(c, s, lapa[0], lapa[1], k[0], k[1], PONI);
 
-      // satula
-      c.fillStyle = '#7a4a22';
-      c.beginPath(); c.ellipse(0.0, -0.8 * s, 0.13 * s, 0.045 * s, 0, 0, Math.PI * 2); c.fill();
+      // satula (sääntö 19: ilman satulaa sitä ei piirretä)
+      if (satulaPaalla) {
+        c.fillStyle = '#7a4a22';
+        c.beginPath(); c.ellipse(0.0, -0.8 * s, 0.13 * s, 0.045 * s, 0, 0, Math.PI * 2); c.fill();
+      }
 
       // ratsastaja
       if (ratsastajaMukana) {
         c.save();
         c.translate(0, -0.84 * s);
-        piirraRatsastaja(c, s, asento === 'ilmassa' ? 0.35 : 0.15, true);
+        piirraRatsastaja(c, sIso, asento === 'ilmassa' ? 0.35 : 0.15, pv.koko || 1);
         c.restore();
       }
 
@@ -507,12 +767,13 @@
       c.strokeStyle = TAKKI; c.lineWidth = 0.12 * s;
       c.beginPath(); c.moveTo(0, 0); c.lineTo(olka[0], olka[1]); c.stroke();
       // käsi ja ohjat
-      const kasi = ohjat ? [0.27 * s, -0.06 * s] : [olka[0] + 0.18 * s, olka[1] - 0.1 * s];
+      const k = ohjat === true ? 1 : (ohjat || 1);   // ohjat = ponin koko (pienellä ponilla pienemmät ohjat)
+      const kasi = ohjat ? [(0.15 + 0.12 * k) * s, -0.06 * s * k] : [olka[0] + 0.18 * s, olka[1] - 0.1 * s];
       c.lineWidth = 0.05 * s;
       c.beginPath(); c.moveTo(olka[0], olka[1]); c.lineTo(kasi[0], kasi[1]); c.stroke();
       if (ohjat) {
-        c.strokeStyle = '#5a3412'; c.lineWidth = Math.max(1, 0.012 * s);
-        c.beginPath(); c.moveTo(kasi[0], kasi[1]); c.lineTo(0.62 * s, -0.06 * s); c.stroke();
+        c.strokeStyle = '#5a3412'; c.lineWidth = Math.max(1, 0.012 * s * k);
+        c.beginPath(); c.moveTo(kasi[0], kasi[1]); c.lineTo(0.62 * s * k, -0.06 * s * k); c.stroke();
       }
       // pää ja kypärä
       const pa = [olka[0] + 0.03 * s, olka[1] - 0.1 * s];
@@ -526,7 +787,7 @@
     // sääntö 14: kieltäytyessä ratsastaja tippuu, nousee seisomaan,
     // kävelee ponin luo ja hyppää satulaan
     function piirraTippuva(c, hx, y0, s, q) {
-      const satula = [hx, y0 - 0.84 * s];
+      const satula = [hx, y0 - 0.84 * s * (valittuPoni.koko || 1)];
       const maa = [hx + 0.75 * s, y0 - 0.06 * s];          // makaa maassa (lonkka)
       const pysty = [maa[0], y0 - 0.32 * s];                // seisoo samassa kohdassa
       const ponilla = [hx + 0.12 * s, y0 - 0.32 * s];       // seisoo ponin vieressä
@@ -570,13 +831,25 @@
       // taivas
       ctx.fillStyle = '#7ec8f5';
       ctx.fillRect(0, 0, L, y0);
+      // sääntö 23: paikan taustakuva
+      if (tila !== 'alku' && tila !== 'paikka') {
+        ctx.save(); ctx.globalAlpha = 0.6;          // vähän haalea, niin esteet erottuvat
+        // sääntö 24: kaksi kuvaa peräkkäin, niin tausta tulee uudestaan toiselta puolelta
+        const off = taustaSiirto % L;
+        for (const dx of [-off, L - off]) {
+          ctx.save(); ctx.translate(dx, 0);
+          valittuPaikka.tausta(ctx, L, y0);
+          ctx.restore();
+        }
+        ctx.restore();
+      }
       // hiekkakenttä
       ctx.fillStyle = '#d9b77a';
       ctx.fillRect(0, y0, L, K - y0);
       ctx.fillStyle = '#c9a265';
       ctx.fillRect(0, y0, L, 4);
 
-      if (tila === 'alku') return;
+      if (tila === 'alku' || ((tila === 'paikka' || tila === 'valinta' || tila === 'satula') && !esteet)) return;
 
       for (const e of esteet) piirraEste(e);
 
@@ -589,7 +862,7 @@
 
       // poni ja ratsastaja (sääntö 13)
       const s = poniKoko();
-      const nousu = ilmassa ? Math.sin(hyppyT * Math.PI) * hyppyKork() : 0;
+      const nousu = ilmassa ? Math.sin(hyppyT * Math.PI) * hyppyKork() * hyppyVoima : 0;
       let heilu = 0;
       if (kieltoAika > 0) heilu = Math.sin(kieltoAika * 30) * s * 0.04;
       const asento = ilmassa ? 'ilmassa' : (kieltoAika > 0 ? 'seisoo' : 'laukka');
@@ -605,6 +878,9 @@
       const pisteTeksti = '⭐ ' + pisteet;
       ctx.fillText(pisteTeksti, 16, 16);
       ctx.fillText('🏆 ' + ennatys, 16 + ctx.measureText(pisteTeksti).width + 28, 16);
+      // sääntö 17: valitun ponin nimi
+      ctx.font = 'bold ' + Math.max(20, L * 0.055) + 'px system-ui, sans-serif';
+      ctx.fillText('🐴 ' + valittuPoni.nimi, 16, 16 + Math.max(24, L * 0.07) + 10);
 
       // viesti
       if (viestiAika > 0) {
@@ -641,12 +917,87 @@
     })();
 
     // ohjaus: napautus, hiiri tai välilyönti / nuoli ylös
-    kangas.addEventListener('pointerdown', (ev) => { ev.preventDefault(); hyppaa(); });
-    window.addEventListener('keydown', (ev) => {
-      if (ev.code === 'Space' || ev.code === 'ArrowUp') { ev.preventDefault(); hyppaa(); }
+    kangas.addEventListener('pointerdown', (ev) => { ev.preventDefault(); pidossa = true; hyppaa(); });
+    window.addEventListener('pointerup', () => { pidossa = false; });
+    window.addEventListener('pointercancel', () => { pidossa = false; });
+    window.addEventListener('keyup', (ev) => {
+      if (ev.code === 'Space' || ev.code === 'ArrowUp') pidossa = false;
     });
-    document.getElementById('aloitaNappi').addEventListener('click', () => { avaaAanet(); aloita(); });
-    document.getElementById('uudestaanNappi').addEventListener('click', () => { avaaAanet(); aloita(); });
+    window.addEventListener('keydown', (ev) => {
+      if (ev.code === 'Space' || ev.code === 'ArrowUp') { ev.preventDefault(); pidossa = true; hyppaa(); }
+    });
+    // sääntö 1 ja 16: Aloita-napista tulee ensin ponin valinta
+    // sääntö 22: Aloita-napista tulee ensin paikan valinta
+    function naytaPaikat() {
+      avaaAanet();
+      tila = 'paikka';
+      document.getElementById('alku').classList.add('piilossa');
+      document.getElementById('loppu').classList.add('piilossa');
+      document.getElementById('paikkaRuutu').classList.remove('piilossa');
+    }
+    function naytaValinta() {
+      tila = 'valinta';
+      document.getElementById('paikkaRuutu').classList.add('piilossa');
+      document.getElementById('valinta').classList.remove('piilossa');
+    }
+    document.getElementById('aloitaNappi').addEventListener('click', naytaPaikat);
+    document.getElementById('uudestaanNappi').addEventListener('click', naytaPaikat);
+
+    // paikkakortit
+    (function () {
+      const rivi = document.getElementById('paikkarivi');
+      const dpr = window.devicePixelRatio || 1;
+      PAIKAT.forEach((pk) => {
+        const nappi = document.createElement('button');
+        nappi.className = 'ponikortti';
+        const kv = document.createElement('canvas');
+        kv.width = 120 * dpr; kv.height = 100 * dpr;
+        const c2 = kv.getContext('2d');
+        c2.setTransform(dpr, 0, 0, dpr, 0, 0);
+        c2.fillStyle = '#7ec8f5'; c2.fillRect(0, 0, 120, 82);
+        pk.tausta(c2, 120, 82);
+        c2.fillStyle = '#d9b77a'; c2.fillRect(0, 82, 120, 18);
+        const nimi = document.createElement('span');
+        nimi.textContent = pk.emoji + ' ' + pk.nimi;
+        nappi.appendChild(kv); nappi.appendChild(nimi);
+        nappi.addEventListener('click', () => { valittuPaikka = pk; naytaValinta(); });
+        rivi.appendChild(nappi);
+      });
+    })();
+
+    // sääntö 19: satulan kanssa vai ilman
+    function valitseSatula(paalla) {
+      satulaPaalla = paalla;
+      document.getElementById('satulaRuutu').classList.add('piilossa');
+      aloita();
+    }
+    document.getElementById('satulaKanssa').addEventListener('click', () => valitseSatula(true));
+    document.getElementById('satulaIlman').addEventListener('click', () => valitseSatula(false));
+
+    // ponikortit valintaruudulle
+    (function () {
+      const rivi = document.getElementById('ponirivi');
+      const dpr = window.devicePixelRatio || 1;
+      PONIT.forEach((pv) => {
+        const nappi = document.createElement('button');
+        nappi.className = 'ponikortti';
+        const kv = document.createElement('canvas');
+        kv.width = 120 * dpr; kv.height = 100 * dpr;
+        const c2 = kv.getContext('2d');
+        c2.setTransform(dpr, 0, 0, dpr, 0, 0);
+        piirraPoni(c2, 58, 97, 68, 'seisoo', 0, true, pv);
+        const nimi = document.createElement('span');
+        nimi.textContent = pv.nimi;
+        nappi.appendChild(kv); nappi.appendChild(nimi);
+        nappi.addEventListener('click', () => {
+          valittuPoni = pv;
+          tila = 'satula';
+          document.getElementById('valinta').classList.add('piilossa');
+          document.getElementById('satulaRuutu').classList.remove('piilossa');
+        });
+        rivi.appendChild(nappi);
+      });
+    })();
     document.addEventListener('touchmove', (ev) => ev.preventDefault(), { passive: false });
   </script>
 </body>
