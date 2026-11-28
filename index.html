@@ -165,6 +165,15 @@
     }
 
     let tila = 'alku'; // alku, ajo, loppu
+    // sääntö 15: ennätys muistetaan localStoragessa
+    let ennatys = 0;
+    try { ennatys = parseInt(localStorage.getItem('ponitEnnatys'), 10) || 0; } catch (e) {}
+    function paivitaEnnatys() {
+      if (pisteet > ennatys) {
+        ennatys = pisteet;
+        try { localStorage.setItem('ponitEnnatys', String(ennatys)); } catch (e) {}
+      }
+    }
     let askel = 0;
     let pisteet, kiellot, esteet, maali, hyppyT, ilmassa, kieltoAika, viesti, viestiAika, edellinen;
 
@@ -216,6 +225,7 @@
 
     function lopeta(maaliin) {
       tila = 'loppu';
+      paivitaEnnatys();
       document.getElementById('loppuKuva').textContent = maaliin ? '🏁' : '🛑';
       document.getElementById('loppuOtsikko').textContent = maaliin ? 'Maali!' : 'Peli loppui';
       document.getElementById('loppuTeksti').innerHTML =
@@ -591,7 +601,10 @@
       ctx.fillStyle = '#3a2a10';
       ctx.font = 'bold ' + Math.max(24, L * 0.07) + 'px system-ui, sans-serif';
       ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-      ctx.fillText('⭐ ' + pisteet, 16, 16);
+      paivitaEnnatys();
+      const pisteTeksti = '⭐ ' + pisteet;
+      ctx.fillText(pisteTeksti, 16, 16);
+      ctx.fillText('🏆 ' + ennatys, 16 + ctx.measureText(pisteTeksti).width + 28, 16);
 
       // viesti
       if (viestiAika > 0) {
